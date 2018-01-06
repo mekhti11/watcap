@@ -26,7 +26,7 @@ void send_Message(char * id,int network_socket){
   printf("Mesaji iletmek istediginiz kisinin id-sini ve mesajinizi giriniz:" );
   scanf("%s",m.alan_id);
   scanf("%[^\n]%*c",m.mesaj);
-  
+
   printf("%s\n",m.gonderen_id );
   printf("%s\n",m.alan_id);
   printf("%s\n",m.mesaj );
@@ -39,11 +39,11 @@ void send_Message(char * id,int network_socket){
     perror("Error ");
     exit(-1);
   }
-  
-  if(send(network_socket,&m.read_receipt,sizeof(m.read_receipt),0)==-1){
-    perror("Error ");
-    exit(-1);
-  }
+
+  // if(send(network_socket,&m.read_receipt,sizeof(m.read_receipt),0)==-1){
+  //   perror("Error ");
+  //   exit(-1);
+  // }
   if(send(network_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
     perror("Error ");
     exit(-1);
@@ -87,7 +87,7 @@ void delete_Contact(char * id,char * path){
   FILE *f;
   char * fname;
   fname = merge_strings(id,".txt");
-  
+
   int a=search_in_contact(path,fname);
   if(a==0){
     printf("Kisi listenizde bulunamadi\n\n");
@@ -125,9 +125,9 @@ void list_contacts(char *id){
   int a=0,flag;
   struct USER u;
   char * fname;
-  
+
   fname = merge_strings(id,".txt");
-  
+
   f=fopen(fname,"r");
   fread(&u,sizeof(struct USER),1,f);
   while(!feof(f)){
@@ -144,17 +144,17 @@ void add_Contact(char * id){
   int a=0,flag;
   struct USER u;
   char * fname;
-  
+
   fname = merge_strings(id,".txt");
-  
+
   f=fopen(fname,"a+");
-  
+
   printf("Kisi bilgilerini sirasiyla giriniz(Id,TelefonNumarasi,Isim): ");
   scanf("%s %s %s",u.u_id,u.p_num,u.name);
 
   if(search_in_users(u.u_id)){
     if (!search_in_contact(u.u_id,fname)){
-        
+
       fwrite(&u,sizeof(struct USER),1,f);
       printf("Kisi listenize eklendi.\n\n");
 
@@ -195,7 +195,7 @@ int main(int argc,char *argv[]){
 
 
   network_socket=socket(AF_INET,SOCK_STREAM,0);
-  
+
   if(network_socket == -1){
   	perror("Error ");
   	exit(-1);
@@ -206,7 +206,7 @@ int main(int argc,char *argv[]){
   server_address.sin_addr.s_addr=INADDR_ANY;
 
 
-  
+
   client_socket=connect(network_socket, (struct sockaddr *)&server_address,sizeof(server_address));
 
 
@@ -221,7 +221,7 @@ int main(int argc,char *argv[]){
 	  	exit(-1);
 	}
 
- 
+
 
   //menus
   while(choice!=6){
@@ -240,18 +240,18 @@ int main(int argc,char *argv[]){
       }
       case 3:{
         printf("Silmek istediginiz kisi id'sini girin : ");
-  
-        char path[16];  
-  
+
+        char path[16];
+
         scanf("%s",path);
-  
+
         delete_Contact(argv[1],path);
         break;
       }
       case 4:{
         sm_status='0';
-        send(network_socket,&sm_status,sizeof(sm_status),0);  
-        send_Message(argv[1],network_socket); 
+        send(network_socket,&sm_status,sizeof(sm_status),0);
+        send_Message(argv[1],network_socket);
         break;
       }
       case 5:{
@@ -278,15 +278,15 @@ int main(int argc,char *argv[]){
           if(send(network_socket,&altsecim,sizeof(altsecim),0)==-1){
             perror("275 Error ");
             exit(-1);
-          }; 
+          };
           if(altsecim=='1'){
-            printf("altsecim\n"); 
+            printf("altsecim\n");
             if(recv(network_socket,&count,sizeof(count),0)==-1){
               perror("281 Error ");
               exit(-1);
             }
             printf("Toplam %c- Okunmamis mesajiniz var\n",count );
-            
+
             int say=count-'0';
             int i;
             printf("%d\n",say );
@@ -310,19 +310,19 @@ int main(int argc,char *argv[]){
                   perror("304 Error ");
                   exit(-1);
                 }
-    
+
                 printf("%s-den gelen mesajiniz:\n-%s\n",m.gonderen_id,m.mesaj );
               }
 
             }
-          } 
+          }
         }
         else
           if(send(network_socket,&secim,sizeof(secim),0)==-1){
             perror("315 Error ");
             exit(-1);
           }
-        
+
         break;
       }
       case 6:{
@@ -337,7 +337,7 @@ int main(int argc,char *argv[]){
   }
 
 
-  
+
   close(client_socket);
 	return 0;
 }

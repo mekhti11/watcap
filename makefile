@@ -1,9 +1,11 @@
 client.o: client.c
-	cc -c client.c 
-server.o: server.c
-	cc -c server.c 
+	cc -c client.c
 
-client: client.o 
+client: client.o
 	cc client.o -o client
-server: server.o
-	cc server.o -o server
+
+server2.o: server2.c
+		cc -c server2.c
+		
+server2: server2.o
+		cc server2.o -o server -lpthread
