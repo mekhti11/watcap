@@ -23,27 +23,7 @@ char * merge_strings(char *s1,char *s2){
   return result;
 }
 
-void list_messages(char * id){
-  struct Msg m;
-  FILE *f;
-  char * fname;
-  char * status;
-  fname=merge_strings(id,"gidenmessages.txt");
-  // printf("32:%s\n",fname );
-  f=fopen(fname,"a+");
-  while(fread(&m,sizeof(struct Msg),1,f)){
 
-    if(m.read_receipt=='0'){
-        status="Okunmadi";
-    }
-    else{
-        status="Okundu";
-    }
-    // printf("%s - %s - %s\n",m.alan_id,m.mesaj,status);
-  }
-
-  fclose(f);
-}
 
 void change_message_status(char * id,char * path){
   struct Msg m,mesajlar[100];

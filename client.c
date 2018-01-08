@@ -88,7 +88,7 @@ void delete_Contact(char * id,char * path){
 
   int a=search_in_contact(path,fname);
   if(a==0){
-    printf("Kisi listenizde bulunamadi\n\n");
+    printf("\n\nKisi listenizde bulunamadi\n\n");
   }
   else{
     f=fopen(fname,"r");
@@ -105,14 +105,13 @@ void delete_Contact(char * id,char * path){
     f=fopen(fname,"w");
 
     for(j=0;j<i;j++){
-      printf("\n%s-%s",path,users[j].u_id );
+     // printf("\n\n%s-%s\n\n",path,users[j].u_id );
       if(strncmp(path,users[j].u_id,sizeof(path))){
         fwrite(&users[j],sizeof(struct USER),1,f);
-        printf("girdi\n");
       }
     }
 
-    printf("Kisi listenizden silindi\n\n");
+    printf("\n\nKisi listenizden silindi\n\n");
     fclose(f);
   }
 
@@ -129,7 +128,7 @@ void list_contacts(char *id){
   f=fopen(fname,"r");
   fread(&u,sizeof(struct USER),1,f);
   while(!feof(f)){
-    printf("%s %s %s\n",u.u_id,u.p_num,u.name );
+    printf("\n\n%s %s %s\n",u.u_id,u.p_num,u.name );
     fread(&u,sizeof(struct USER),1,f);
   }
 
@@ -147,22 +146,22 @@ void add_Contact(char * id){
 
   f=fopen(fname,"a+");
 
-  printf("Kisi bilgilerini sirasiyla giriniz(Id,TelefonNumarasi,Isim): ");
+  printf("\nKisi bilgilerini sirasiyla giriniz(Id,TelefonNumarasi,Isim): ");
   scanf("%s %s %s",u.u_id,u.p_num,u.name);
 
   if(search_in_users(u.u_id)){
     if (!search_in_contact(u.u_id,fname)){
 
       fwrite(&u,sizeof(struct USER),1,f);
-      printf("Kisi listenize eklendi.\n\n");
+      printf("\nKisi listenize eklendi.\n\n");
 
     }
     else{
-      printf("Id zaten kayitli\n");
+      printf("\nId zaten kayitli\n");
     }
   }
   else{
-    printf("ID Bulunamadi \n\n");
+    printf("\nID Bulunamadi \n\n");
   }
 
   fclose(f);
@@ -173,8 +172,8 @@ void yeniUye(char * id){
     FILE *f;
     f=fopen("users.txt","a+");
     char * fname;
-
-    printf("Kullanici bilgilerini giriniz:");
+	printf("\n\nKullanici Bilgileriniz bulunamadi . \n" );
+    printf("Lutfen Kullanici bilgilerini giriniz(Isim,TelefonNumarasi):");
     scanf("%s %s",u.name,u.p_num);
     sprintf(u.u_id,"%s",id);
     fwrite(&u,sizeof(struct USER),1,f);
@@ -192,7 +191,7 @@ void list_messages(char * id){
   char * fname;
   char * status;
   fname=merge_strings(id,"gidenmessages.txt");
-  printf("32:%s\n",fname );
+  // printf("32:%s\n",fname );
   f=fopen(fname,"a+");
   while(fread(&m,sizeof(struct Msg),1,f)){
 
@@ -202,7 +201,7 @@ void list_messages(char * id){
     else{
         status="Okundu";
     }
-    printf("%s - %s - %s\n",m.alan_id,m.mesaj,status);
+    printf("\n%s - %s - %s\n",m.alan_id,m.mesaj,status);
   }
 
   fclose(f);
@@ -265,7 +264,7 @@ int main(int argc,char *argv[]){
 
   //menus
   while(choice!=6){
-    printf("1.List Contacs\n2.Add User\n3.Delete User\n4.Send Messages\n5.Check Messages\n6.Exit\n");
+    printf("\n1.List Contacs\n2.Add User\n3.Delete User\n4.Send Messages\n5.Check Messages\n6.Exit\n");
     printf("\nSecim yapin : ");
     scanf(" %d",&choice);
 
@@ -303,7 +302,7 @@ int main(int argc,char *argv[]){
           perror("262 Error ");
           exit(-1);
         }
-        printf("1.Gelen Mesajlar\n2.Giden Mesajlar:\nLutfen seciminizi yapin: ");
+        printf("\n1.Gelen Mesajlar\n2.Giden Mesajlar:\nLutfen seciminizi yapin: ");
         scanf(" %c",&secim);
 
         if(send(network_socket,&secim,sizeof(secim),0)==-1){
@@ -317,7 +316,7 @@ int main(int argc,char *argv[]){
 
 	          char altsecim;
 
-	          printf("1.Okunmamis Mesajlar\n2.Tum Mesajlar:\nLutfen seciminizi yapin: ");
+	          printf("\n1.Okunmamis Mesajlar\n2.Tum Mesajlar:\nLutfen seciminizi yapin: ");
 	          scanf(" %c",&altsecim);
 
 	          if(send(network_socket,&altsecim,sizeof(altsecim),0)==-1){
@@ -331,11 +330,11 @@ int main(int argc,char *argv[]){
 	              perror("281 Error ");
 	              exit(-1);
 	            }
-	            printf("Toplam %c- Okunmamis mesajiniz var\n",count );
+	            printf("\nToplam %c- Okunmamis mesajiniz var\n",count );
 
 	            int say=count-'0';
 	            int i;
-	            printf(" %d\n",say );
+	            //printf(" %d\n",say );
 				struct Msg m;
 	            for(i=0;i<say;i++){
 		            if(recv(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
@@ -343,7 +342,7 @@ int main(int argc,char *argv[]){
 		                exit(-1);
 		            }
 		            // printf("recv sonrasi\n");
-		            printf(" %s-den Okunmamis mesajiniz var\n",m.gonderen_id);
+		            printf("%s-den Okunmamis mesajiniz var\n",m.gonderen_id);
 		            printf("Mesaji okumak ister misiniz?(1/0) > ");
 		            scanf(" %c",&status);
 		            if(send(network_socket,&status,sizeof(status),0)==-1){
@@ -357,7 +356,7 @@ int main(int argc,char *argv[]){
 		                  	exit(-1);
 		                }
 
-		                printf("%s-den gelen mesajiniz:\n-%s\n",m.gonderen_id,m.mesaj );
+		                printf("\n%s-den gelen mesajiniz:\n->%s\n",m.gonderen_id,m.mesaj );
 		            }
 
 	            }
@@ -383,7 +382,7 @@ int main(int argc,char *argv[]){
 					if(recv(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
 						perror("HATA");
 					}
-					printf("%s -> %s\n",m.gonderen_id,m.mesaj );
+					printf("\n%s -> %s\n",m.gonderen_id,m.mesaj );
 				}
 
 				// printf("for sonrasi\n");
