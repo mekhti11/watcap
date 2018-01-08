@@ -9,6 +9,8 @@
 #include "stipler.h"
 #include <string.h>
 
+#define PORT 8110
+
 char * merge_strings(char *s1,char *s2){
   int len1 = strlen(s1);
   int len2 = strlen(s2);
@@ -18,37 +20,33 @@ char * merge_strings(char *s1,char *s2){
   memcpy(result+len1, s2, len2+1);//+1 null karakteri  için
   return result;
 }
+
 void send_Message(char * id,int network_socket){
   struct Msg m;
-  m.read_receipt ='0';
+  int a_id;
   sprintf(m.gonderen_id ,"%s",id);
 
   printf("Mesaji iletmek istediginiz kisinin id-sini ve mesajinizi giriniz:" );
-  scanf("%s",m.alan_id);
-  scanf("%[^\n]%*c",m.mesaj);
+  scanf(" %d",&a_id);
+  scanf(" %[^\n]%*c",m.mesaj);
 
-  printf("%s\n",m.gonderen_id );
-  printf("%s\n",m.alan_id);
-  printf("%s\n",m.mesaj );
+  // printf("%s\n",m.gonderen_id );
+  // printf("%d\n",a_id);
+  sprintf(m.alan_id,"%d",a_id);
+  // printf("%s\n",m.alan_id );
+  // printf("%s\n",m.mesaj );
 
-  if(send(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
-    perror("Error ");
-    exit(-1);
-  }
   if(send(network_socket,&m.alan_id,sizeof(m.alan_id),0)==-1){
     perror("Error ");
     exit(-1);
   }
 
-  // if(send(network_socket,&m.read_receipt,sizeof(m.read_receipt),0)==-1){
-  //   perror("Error ");
-  //   exit(-1);
-  // }
   if(send(network_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
     perror("Error ");
     exit(-1);
   }
   printf("Sent\n");
+
 }
 
 
@@ -170,7 +168,45 @@ void add_Contact(char * id){
   fclose(f);
 }
 
+void yeniUye(char * id){
+    struct USER u;
+    FILE *f;
+    f=fopen("users.txt","a+");
+    char * fname;
 
+    printf("Kullanici bilgilerini giriniz:");
+    scanf("%s %s",u.name,u.p_num);
+    sprintf(u.u_id,"%s",id);
+    fwrite(&u,sizeof(struct USER),1,f);
+    fclose(f);
+
+
+    fname = merge_strings(id,".txt");
+
+    f=fopen(fname,"a+");
+}
+
+void list_messages(char * id){
+  struct Msg m;
+  FILE *f;
+  char * fname;
+  char * status;
+  fname=merge_strings(id,"gidenmessages.txt");
+  printf("32:%s\n",fname );
+  f=fopen(fname,"a+");
+  while(fread(&m,sizeof(struct Msg),1,f)){
+
+    if(m.read_receipt=='0'){
+        status="Okunmadi";
+    }
+    else{
+        status="Okundu";
+    }
+    printf("%s - %s - %s\n",m.alan_id,m.mesaj,status);
+  }
+
+  fclose(f);
+}
 
 
 int main(int argc,char *argv[]){
@@ -189,7 +225,7 @@ int main(int argc,char *argv[]){
   // printf("%s\n",argv[1] );
 
   strncpy(user.u_id,argv[1],sizeof(argv[1]));
-  printf("GI:%s\n",user.u_id );
+  // printf("GI:%s\n",user.u_id );
 
   //printf("%d\n",message.gonderen_id  );
 
@@ -202,7 +238,7 @@ int main(int argc,char *argv[]){
   }
 
   server_address.sin_family=AF_INET;
-  server_address.sin_port=htons(8084);
+  server_address.sin_port=htons(PORT);
   server_address.sin_addr.s_addr=INADDR_ANY;
 
 
@@ -221,13 +257,17 @@ int main(int argc,char *argv[]){
 	  	exit(-1);
 	}
 
-
+    char response;
+    recv(network_socket,&response,sizeof(response),0);
+    if (response=='0') {
+        yeniUye(argv[1]);
+    }
 
   //menus
   while(choice!=6){
     printf("1.List Contacs\n2.Add User\n3.Delete User\n4.Send Messages\n5.Check Messages\n6.Exit\n");
     printf("\nSecim yapin : ");
-    scanf("%d",&choice);
+    scanf(" %d",&choice);
 
     switch(choice){
       case 1:{
@@ -257,80 +297,113 @@ int main(int argc,char *argv[]){
       case 5:{
         char secim,count,status;
         char mesaj[256];
-        char check_m = '1';
-        if(send(network_socket,&check_m,sizeof(check_m),0)==-1){
+		struct Msg m;
+        sm_status='1';
+        if(send(network_socket,&sm_status,sizeof(sm_status),0)==-1){
           perror("262 Error ");
           exit(-1);
         }
         printf("1.Gelen Mesajlar\n2.Giden Mesajlar:\nLutfen seciminizi yapin: ");
         scanf(" %c",&secim);
-        if (secim=='1'){
-          printf("in secim\n");
-          if(send(network_socket,&secim,sizeof(secim),0)==-1){
-            perror("269 Error ");
-            exit(-1);
-          }
 
-          char altsecim;
-
-          printf("1.Okunmamis Mesajlar\n2.Tum Mesajlar:\nLutfen seciminizi yapin: ");
-          scanf(" %c",&altsecim);
-          if(send(network_socket,&altsecim,sizeof(altsecim),0)==-1){
-            perror("275 Error ");
-            exit(-1);
-          };
-          if(altsecim=='1'){
-            printf("altsecim\n");
-            if(recv(network_socket,&count,sizeof(count),0)==-1){
-              perror("281 Error ");
-              exit(-1);
-            }
-            printf("Toplam %c- Okunmamis mesajiniz var\n",count );
-
-            int say=count-'0';
-            int i;
-            printf("%d\n",say );
-            for(i=0;i<say;i++){
-              struct Msg m;
-              if(recv(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
-                perror("291 Error ");
-                exit(-1);
-              }
-              printf("recv sonrasi\n");
-              printf("%s-den Okunmamis mesajiniz var\n",m.gonderen_id);
-              printf("Mesaji okumak ister misiniz? > ");
-              scanf(" %c",&status);
-              if(send(network_socket,&status,sizeof(status),0)==-1){
-                perror("298 Error ");
-                exit(-1);
-              }
-              if (status=='1'){
-                printf("in if\n" );
-                if(recv(network_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
-                  perror("304 Error ");
-                  exit(-1);
-                }
-
-                printf("%s-den gelen mesajiniz:\n-%s\n",m.gonderen_id,m.mesaj );
-              }
-
-            }
-          }
+        if(send(network_socket,&secim,sizeof(secim),0)==-1){
+          perror("269 Error ");
+          exit(-1);
         }
-        else
-          if(send(network_socket,&secim,sizeof(secim),0)==-1){
-            perror("315 Error ");
-            exit(-1);
-          }
 
-        break;
+        if (secim=='1'){
+	        //   printf("in secim\n");
+
+
+	          char altsecim;
+
+	          printf("1.Okunmamis Mesajlar\n2.Tum Mesajlar:\nLutfen seciminizi yapin: ");
+	          scanf(" %c",&altsecim);
+
+	          if(send(network_socket,&altsecim,sizeof(altsecim),0)==-1){
+	            perror("275 Error ");
+	            exit(-1);
+	          };
+
+	          if(altsecim=='1'){
+	            // printf("altsecim\n");
+	            if(recv(network_socket,&count,sizeof(count),0)==-1){
+	              perror("281 Error ");
+	              exit(-1);
+	            }
+	            printf("Toplam %c- Okunmamis mesajiniz var\n",count );
+
+	            int say=count-'0';
+	            int i;
+	            printf(" %d\n",say );
+				struct Msg m;
+	            for(i=0;i<say;i++){
+		            if(recv(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
+		                perror("291 Error ");
+		                exit(-1);
+		            }
+		            // printf("recv sonrasi\n");
+		            printf(" %s-den Okunmamis mesajiniz var\n",m.gonderen_id);
+		            printf("Mesaji okumak ister misiniz?(1/0) > ");
+		            scanf(" %c",&status);
+		            if(send(network_socket,&status,sizeof(status),0)==-1){
+		                perror("298 Error ");
+		                exit(-1);
+		            }
+		            if (status=='1'){
+		                // printf("in if\n" );
+		                if(recv(network_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
+		                  	perror("304 Error ");
+		                  	exit(-1);
+		                }
+
+		                printf("%s-den gelen mesajiniz:\n-%s\n",m.gonderen_id,m.mesaj );
+		            }
+
+	            }
+			}
+			if(altsecim=='2'){
+				int count,i;
+				char c[4];
+				// printf("%c\n",altsecim);
+				// printf("%d NS\n",network_socket);
+
+				if(recv(network_socket,&c,sizeof(c),0)==-1){
+					perror("HATA");
+				}
+				// printf("%s\n",c );
+				count = strtol(c,NULL,10);
+				// printf("%d\n",count );
+
+				for(i=0;i<count;i++){
+					if(recv(network_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
+						perror("HATA");
+					}
+
+					if(recv(network_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
+						perror("HATA");
+					}
+					printf("%s -> %s\n",m.gonderen_id,m.mesaj );
+				}
+
+				// printf("for sonrasi\n");
+			}
+        }
+		else{
+		    list_messages(argv[1]);
+		}
+		// printf("break oncesi\n" );
+		break;
+
+
       }
       case 6:{
-        char st = 'q';
-        if(send(network_socket,&st,sizeof(st),0)==-1){
+        sm_status = 'q';
+        if(send(network_socket,&sm_status,sizeof(sm_status),0)==-1){
           perror("315 Error ");
           exit(-1);
         }
+        close(client_socket);
         break;
       }
     }
@@ -338,6 +411,6 @@ int main(int argc,char *argv[]){
 
 
 
-  close(client_socket);
+
 	return 0;
 }

@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include "stipler.h"
 
+#define PORT 8110
 
 
 
@@ -16,27 +17,31 @@ char * merge_strings(char *s1,char *s2){
   int len1 = strlen(s1);
   int len2 = strlen(s2);
   char *result;
-  result =(char *) malloc((len1+len2+1)*sizeof(char));//+1 null karakteri için
+  result =(char *) malloc((len1+len2+1)*sizeof(char));//+1 null karakteri için+
   memcpy(result, s1, len1);
   memcpy(result+len1, s2, len2+1);//+1 null karakteri  için
   return result;
 }
+
 void list_messages(char * id){
   struct Msg m;
   FILE *f;
   char * fname;
   char * status;
   fname=merge_strings(id,"gidenmessages.txt");
-  f=fopen(fname,"r");
-  fread(&m,sizeof(struct Msg),1,f);
-  while(!feof(f)){
-    if(m.read_receipt=='0')
-      status="Okunmadi";
-    else
-      status="Okundu";
-    printf("%s - %s - %s\n",m.alan_id,m.mesaj,status);
-    fread(&m,sizeof(struct Msg),1,f);
+  // printf("32:%s\n",fname );
+  f=fopen(fname,"a+");
+  while(fread(&m,sizeof(struct Msg),1,f)){
+
+    if(m.read_receipt=='0'){
+        status="Okunmadi";
+    }
+    else{
+        status="Okundu";
+    }
+    // printf("%s - %s - %s\n",m.alan_id,m.mesaj,status);
   }
+
   fclose(f);
 }
 
@@ -97,7 +102,7 @@ void change_message_status(char * id,char * path){
 
 }
 
-void check_Messages(char * id,int client_socket){
+void check_Messages(char * id,int client_socket){ //burda bug var
   struct Msg m;
   FILE *f;
   char * fname;
@@ -110,43 +115,48 @@ void check_Messages(char * id,int client_socket){
   if(secim=='1'){
     recv(client_socket,&altsecim,sizeof(altsecim),0);
     if(altsecim=='1'){
-      int id_dizi[16];
-      fname=merge_strings(id,"gelenmessages.txt");
+        // printf("Gelen Okunmamis mesajlar\n");
+        fname=merge_strings(id,"gelenmessages.txt");
+        // printf("120: %s->%s\n",fname,id );
 
-      f=fopen(fname,"r");
-      fread(&m,sizeof(struct Msg),1,f);
+        f=fopen(fname,"a+");
+
       int a=0;
+	  fread(&m,sizeof(struct Msg),1,f);
       while(!feof(f)){
-        if(m.read_receipt=='0')
-          a++;
-          fread(&m,sizeof(struct Msg),1,f);
+        if(m.read_receipt=='0'){
+            a++;
+            // printf("%d\n",a );
+        }
+		fread(&m,sizeof(struct Msg),1,f);
       }
+    //   printf("%d\n",a );
       char count=a+'0';
-      printf("%c\n",count );
+    //   printf("%c\n",count );
       if(send(client_socket,&count,sizeof(count),0)==-1){
         perror("125 Error ");
         exit(-1);
       }
       fclose(f);
 
-      f=fopen(fname,"r");
+      f=fopen(fname,"a+");
       fread(&m,sizeof(struct Msg),1,f);
       while(!feof(f)){
         if(m.read_receipt=='0'){
-          printf("%s - %s\n",m.gonderen_id,m.mesaj);
+        //   printf(" %s - %s\n",m.gonderen_id,m.mesaj);
           send(client_socket,&m.gonderen_id,sizeof(m.gonderen_id),0);
 
           recv(client_socket,&status,sizeof(status),0);
 
           if(status=='1'){
             //strncpy(mesaj,m.mesaj,sizeof(m.mesaj));
-            printf("%s\n",m.mesaj );
+            // printf(" %s\n",m.mesaj );
             if(send(client_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
               perror("262 Error ");
               exit(-1);
             }
             strncpy(path,m.gonderen_id,sizeof(m.gonderen_id));
-            change_message_status(id,path);
+              change_message_status(id,path);
           }
         }
         fread(&m,sizeof(struct Msg),1,f);
@@ -156,28 +166,54 @@ void check_Messages(char * id,int client_socket){
 
 
     if(altsecim=='2'){
-      fname=merge_strings(id,"gelenmessages.txt");
-      f=fopen(fname,"r");
+		int i=0;
+		char c[4];
+		fname=merge_strings(id,"gelenmessages.txt");
+		f=fopen(fname,"a+");
+		fread(&m,sizeof(struct Msg),1,f);
 
-      fread(&m,sizeof(struct Msg),1,f);
+		while(!feof(f)){
+			//  	printf("%s - %s\n",m.gonderen_id,m.mesaj);
+		  	i++;
+			fread(&m,sizeof(struct Msg),1,f);
+		}
+		fclose(f);
+		sprintf(c,"%d",i); //gelen tum mesaj sayisi
 
-      while(!feof(f)){
-        printf("%s - %s\n",m.gonderen_id,m.mesaj);
-        fread(&m,sizeof(struct Msg),1,f);
-        strncpy(path,m.gonderen_id,sizeof(m.gonderen_id));
-        change_message_status(id,path);
-      }
+		// printf("before\n" );
+
+		// printf("%s -> %d\n",c,i );
+
+		if(send(client_socket,&c,sizeof(c),0)==-1){
+			perror("Hata");
+		}
+		// printf("after\n" );
+		int j;
+		f=fopen(fname,"a+");
+		fread(&m,sizeof(struct Msg),1,f);
+		while(!feof(f)){
+			// printf("%s - %s\n",m.gonderen_id,m.mesaj);
+			strncpy(path,m.gonderen_id,sizeof(m.gonderen_id));
+
+			if(send(client_socket,&m.mesaj,sizeof(m.mesaj),0)==-1){
+				perror("Hata");
+			}
+			if(send(client_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
+				perror("Hata");
+			}
+			change_message_status(id,path);
+			fread(&m,sizeof(struct Msg),1,f);
+		}
+
       fclose(f);
     }
 
   }
 
-  else if(secim=='2'){
-   list_messages(id);
-  }
 
 }
-void receive_message(int client_socket){
+
+void receive_message(char * id,int client_socket){
   struct Msg m;
   FILE *f;
   FILE *f1;
@@ -185,42 +221,35 @@ void receive_message(int client_socket){
   char * fname1;
   char tmp[16];
 
-  if(recv(client_socket,&m.gonderen_id,sizeof(m.gonderen_id),0)==-1){
-    perror("Receive Error");
-    exit(-1);
-  }
-  printf("gi:%s\n",m.gonderen_id);//gonderen_id var zaten
+  strcpy(m.gonderen_id ,id);
+  // printf("gi:%s\n",m.gonderen_id);//gonderen_id var zaten
 
-  //strncpy(m.gonderen_id,tmp,sizeof(tmp));
-
-  //printf("gi:%s\n",tmp);
 
   recv(client_socket,&m.alan_id,sizeof(m.alan_id),0);
-  printf("AI:%s\n",m.alan_id);
+  // printf("AI:%s\n",m.alan_id);
 
-//  recv(client_socket,&m.read_receipt,sizeof(m.read_receipt),0);//wtf???
   m.read_receipt = '0';
-  printf("RR:%c\n",m.read_receipt);
+  // printf("RR:%c\n",m.read_receipt);
 
   recv(client_socket,&m.mesaj,sizeof(m.mesaj),0);
-  printf("Msg:%s\n",m.mesaj);
+  // printf("Msg:%s\n",m.mesaj);
 
   fname = merge_strings(m.alan_id,"gelenmessages.txt");
   fname1=merge_strings(m.gonderen_id,"gidenmessages.txt");
-
+  // printf("%s--%s\n",fname,fname1 );
   f=fopen(fname,"a+");
   f1=fopen(fname1,"a+");
-  printf("%s - %s - %s - %c\n",m.gonderen_id,m.alan_id,m.mesaj,m.read_receipt);
+  // printf("%s - %s - %s - %c\n",m.gonderen_id,m.alan_id,m.mesaj,m.read_receipt);
   fwrite(&m,sizeof(struct Msg),1,f);
   fwrite(&m,sizeof(struct Msg),1,f1);
 
   fclose(f);
   fclose(f1);
-  printf("Saved\n");
+  // printf("Saved\n");
 }
 
 
-void search_ID(char* id){
+void search_ID(char* id,int client_socket){
 	FILE *f;
 	struct USER u;
 	int a=0;
@@ -231,49 +260,46 @@ void search_ID(char* id){
 			a=1;
 		fread(&u,sizeof(struct USER),1,f);
 	}
-  if(a==0){
-  	printf("Kullanici bilgilerini giriniz:");
-  	scanf("%s %s",u.name,u.p_num);
-  	sprintf(u.u_id,"%s",id);
-  	fwrite(&u,sizeof(struct USER),1,f);
     fclose(f);
-  	a=0;
-  	char * fname;
+    if(a==0){
+        char response = '0';//yeni uye
+        send(client_socket,&response,sizeof(response),0);
 
-  	fname = merge_strings(id,".txt");
+    }
+    else{
+        char response = '1';//var olan uye
+        send(client_socket,&response,sizeof(response),0);
+    }
 
-  	f=fopen(fname,"a+");
-  }
-  fclose(f);
 }
 
 void * login(void * data ){
   struct STR *cs = (struct STR *) data;
   struct USER user;
-  char st;
+  char st='a';
 
   if(recv(cs->client_socket,&user.u_id,sizeof(user.u_id),0)==-1){
     perror("Receive Error");
     exit(-1);
   }
-  printf("GI:%s\n",user.u_id );
+  // printf("GI:%s\n",user.u_id );
 
-  search_ID(user.u_id);
+  search_ID(user.u_id,cs->client_socket);
 
-  while(1){
-    if(recv(cs->client_socket,&st,sizeof(st),0)==-1){
-      perror("Receive Error");
-      exit(-1);
+  while(st!='q'){
+      recv(cs->client_socket,&st,sizeof(st),0);
+      if(st=='0'){
+          receive_message(user.u_id,cs->client_socket);
+
+      }
+
+      if(st=='1'){
+          check_Messages(user.u_id,cs->client_socket);
+
+      }
+
     }
-    if(st=='0')
-      receive_message(cs->client_socket);
-
-    if(st=='1')
-      check_Messages(user.u_id,cs->client_socket);
-    if (st=='q'){
-      break;
-    }
-  }
+  // printf("270 While sonrasi\n" );
 }
 
 int main(int argc, char const *argv[]){
@@ -285,7 +311,8 @@ int main(int argc, char const *argv[]){
   struct USER user;
   ssize_t t;
   char rm_status;
-  pthread_t thread;
+  pthread_t thread[16];
+  int addr=0;
   struct STR *arg;
   arg = (struct STR *)calloc(1,sizeof(struct STR ));
 
@@ -295,7 +322,7 @@ int main(int argc, char const *argv[]){
 	perror("Socket Error ");
 
   server_address.sin_family=AF_INET;
-  server_address.sin_port=htons(8084);
+  server_address.sin_port=htons(PORT);
   server_address.sin_addr.s_addr=INADDR_ANY;
 
   //printf("%d\n",server_socket );
@@ -313,18 +340,17 @@ int main(int argc, char const *argv[]){
 	 	exit(-1);
 	}
 
-	while(1){
-
-    	client_socket=accept(server_socket,(struct sockaddr *) &client,&c);
+	while(client_socket=accept(server_socket,(struct sockaddr *) &client,&c)){
 
         arg->client_socket = client_socket;
-        printf("%d\n",client_socket );
-        if(pthread_create(&thread,NULL,login,(void *) arg)){
+//        printf("%d\n",client_socket );
+        if(pthread_create(&thread[addr],NULL,login,(void *) arg)){
           printf("Error while creating thread\n");
         }
 
-        printf("thread sorasi\n");
-
+    //    printf("thread sonrasi\n");
+        //pthread_join(thread[addr],NULL);
+        addr++;
 	}
 
 
